@@ -211,30 +211,172 @@ Puedes agregar una clase `DataSeeder` en `Infrastructure` para insertar producto
 
 `docker/docker-compose.yml` (fragmento ilustrativo)
 
-```
+```yaml
 services:
   db:
-    image: postgres:14
+    image: postgres:16
     environment:
       POSTGRES_DB: cleanshop
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-    ports: ["5432:5432"]
+    ports:
+      - "5433:5432"
     volumes:
       - cleanshop_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cleanshop"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   api:
-    build: ../src/CleanShop.Api
+    build:
+      context: ..                        # RAÍZ del repo (donde están todas las carpetas CleanShop.*)
+      dockerfile: CleanShop.Api/Api.Dockerfile
     environment:
-      ConnectionStrings__Default: Host=db;Port=5432;Database=cleanshop;Username=postgres;Password=postgres
-    ports: ["8080:8080"]
-    depends_on: [db]
+      # .NET 8+ soporta ASPNETCORE_HTTP_PORTS como alternativa simple.
+      ASPNETCORE_HTTP_PORTS: "8080"   # o usa ASPNETCORE_URLS si prefieres
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ConnectionStrings__Default: "Host=db;Port=5433;Database=cleanshop;Username=postgres;Password=postgres"
+    ports:
+      - "8081:8080"
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   cleanshop_data:
 ```
 
 ------
+
+Dockerfile
+
+> El archivo dockerfile se debe crear en la solucion webAPI con el nombre de la solucion seguido de punto y DockerFile. Ejemplo practico del repositorio Api.Dockerfile
+
+```dockerfile
+# ---------- Runtime base ----------
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
+WORKDIR /app
+# En .NET 8+ la imagen expone 8080 por defecto. Puedes mapearlo desde compose. :contentReference[oaicite:0]{index=0}
+
+# ---------- Build ----------
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+
+# Copiamos primero los .csproj para aprovechar caché
+COPY CleanShop.Api/CleanShop.Api.csproj CleanShop.Api/
+COPY CleanShop.Application/CleanShop.Application.csproj CleanShop.Application/
+COPY CleanShop.Domain/CleanShop.Domain.csproj CleanShop.Domain/
+COPY CleanShop.Infrastructure/CleanShop.Infrastructure.csproj CleanShop.Infrastructure/
+
+RUN dotnet restore CleanShop.Api/CleanShop.Api.csproj
+
+# Copiamos el resto del código
+COPY . .
+
+# Compilamos
+WORKDIR /src/CleanShop.Api
+RUN dotnet publish -c Release -o /app/publish /p:UseAppHost=false
+
+# ---------- Final ----------
+FROM base AS final
+WORKDIR /app
+COPY --from=build /app/publish .
+ENTRYPOINT ["dotnet", "CleanShop.Api.dll"]
+
+```
+
+DockerIgnore
+
+> Se crea en la solucion webApi
+
+```
+bin
+obj
+**/*.user
+**/*.suo
+**/*.cache
+**/*.log
+```
+
+Como ejecutar
+
+## ⚙️ Usando Docker / Docker Compose
+
+1. Abre terminal en la carpeta raíz de tu proyecto (la que contiene `docker/` y la solución `.sln`).
+
+2. Construye las imágenes Docker:
+
+   ```
+   docker compose -f docker/docker-compose.yml build
+   ```
+
+3. Levanta los contenedores (API + base de datos):
+
+   ```
+   docker compose -f docker/docker-compose.yml up -d
+   ```
+
+4. Verifica que esté corriendo:
+
+   ```
+   docker compose -f docker/docker-compose.yml ps
+   ```
+
+   Debes ver algo como `api` y `db` con estado “Up”.
+
+5. En tu navegador o Postman entra a la URL que mapeaste, por ejemplo:
+
+   ```
+   http://localhost:8081/swagger
+   ```
+
+   (o el puerto que hayas decidido en `ports:` para el servicio `api`).
+
+6. Cuando quieras detener:
+
+   ```
+   docker compose -f docker/docker-compose.yml down
+   ```
+
+## 🔨 Ejecutando localmente sin Docker (solo .NET)
+
+Si quieres correr solo la API desde tu máquina, sin contenedores:
+
+1. Asegúrate de tener el SDK .NET 9 instalado.
+
+2. En la terminal, entra a la carpeta `CleanShop.Api`:
+
+   ```
+   cd CleanShop.Api
+   ```
+
+3. Restaura dependencias:
+
+   ```
+   dotnet restore
+   ```
+
+4. (Opcional) Corre migraciones si usas EF Core:
+
+   ```
+   dotnet ef database update
+   ```
+
+5. Ejecuta:
+
+   ```
+   dotnet run
+   ```
+
+6. Luego, abre tu navegador/postman en:
+
+   ```
+   http://localhost:5000/swagger
+   ```
+
+   (o el puerto que el proyecto indique, puede estar configurado en `launchSettings.json` o en `appsettings`).
 
 ## 🧭 Roadmap educativo
 
