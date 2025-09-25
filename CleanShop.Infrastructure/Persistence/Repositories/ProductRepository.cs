@@ -17,13 +17,15 @@ public sealed class ProductRepository(AppDbContext db) : IProductRepository
     public async Task AddAsync(Product product, CancellationToken ct = default)
     {
         db.Products.Add(product);
-        await db.SaveChangesAsync(ct);
+        // await db.SaveChangesAsync(ct);
+        await Task.CompletedTask;
     }
 
     public async Task UpdateAsync(Product product, CancellationToken ct = default)
     {
         db.Products.Update(product);
-        await db.SaveChangesAsync(ct);
+        // await db.SaveChangesAsync(ct);
+        await Task.CompletedTask;
     }
 
     public async Task RemoveAsync(Product product, CancellationToken ct = default)
