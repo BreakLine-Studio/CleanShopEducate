@@ -8,6 +8,7 @@ public interface IProductRepository
 {
     Task<Product?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<Product?> GetBySkuAsync(Sku sku, CancellationToken ct = default);
+    Task<IReadOnlyList<Product>> GetAllAsync(CancellationToken ct = default);
     Task<IReadOnlyList<Product>> GetPagedAsync(int page,int size,string? q, CancellationToken ct = default);
     Task<int> CountAsync(string? q, CancellationToken ct = default);
     Task<bool> ExistsSkuAsync(Sku sku, CancellationToken ct = default);
