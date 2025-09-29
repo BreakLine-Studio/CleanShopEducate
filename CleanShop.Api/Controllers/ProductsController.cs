@@ -5,9 +5,11 @@ using CleanShop.Application.Abstractions;
 using CleanShop.Domain.Entities;
 using CleanShop.Domain.ValueObjects;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace CleanShop.Api.Controllers;
 
+[EnableRateLimiting("ipLimiter")]
 public class ProductsController : BaseApiController
 {
     private readonly IMapper _mapper;
@@ -28,6 +30,7 @@ public class ProductsController : BaseApiController
     }
 
     [HttpGet("{id:guid}")]
+    [DisableRateLimiting]
     public async Task<ActionResult<ProductDto>> GetById(Guid id, CancellationToken ct)
     {
         var product = await _unitofwork.Products.GetByIdAsync(id, ct);
