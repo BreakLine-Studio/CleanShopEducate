@@ -10,17 +10,19 @@ namespace CleanShop.Api.Controllers;
 
 public class ProductsController : BaseApiController
 {
-    private readonly IProductRepository _repo;
     private readonly IMapper _mapper;
-    public ProductsController(IProductRepository repo, IMapper mapper)
+    private readonly IUnitOfWork _unitofwork;
+
+    public ProductsController(IMapper mapper, IUnitOfWork unitofwork)
     {
-        _repo = repo;
         _mapper = mapper;
+        _unitofwork = unitofwork;
     }
+
     [HttpGet("all")]
     public async Task<ActionResult<IEnumerable<ProductDto>>> GetAll(CancellationToken ct)
     {
-        var products = await _repo.GetAllAsync(ct); // necesitas este método en IProductRepository
+        var products = await _unitofwork.Products.GetAllAsync(ct); // necesitas este método en IProductRepository
         var dto = _mapper.Map<IEnumerable<ProductDto>>(products);
         return Ok(dto);
     }
@@ -28,7 +30,7 @@ public class ProductsController : BaseApiController
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ProductDto>> GetById(Guid id, CancellationToken ct)
     {
-        var product = await _repo.GetByIdAsync(id, ct);
+        var product = await _unitofwork.Products.GetByIdAsync(id, ct);
         if (product is null) return NotFound();
 
         return Ok(_mapper.Map<ProductDto>(product));
@@ -39,11 +41,11 @@ public class ProductsController : BaseApiController
     {
         // Regla de unicidad por SKU
         var sku = Sku.Create(body.Sku);
-        if (await _repo.ExistsSkuAsync(sku, ct))
+        if (await _unitofwork.Products.ExistsSkuAsync(sku, ct))
             return Problem(statusCode: StatusCodes.Status409Conflict, title: "SKU ya existe");
 
         var product = _mapper.Map<Product>(body);
-        await _repo.AddAsync(product, ct);
+        await _unitofwork.Products.AddAsync(product, ct);
 
         var dto = _mapper.Map<ProductDto>(product);
         return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto);

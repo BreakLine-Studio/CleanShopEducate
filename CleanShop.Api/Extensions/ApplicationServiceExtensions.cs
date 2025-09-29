@@ -4,6 +4,7 @@ using MediatR;
 using CleanShop.Application.Abstractions;
 using CleanShop.Infrastructure.Persistence.Repositories;
 using CleanShop.Api.Mappings;
+using CleanShop.Infrastructure.UnitOfWork;
 namespace CleanShop.Api.Extensions;
 public static class ApplicationServiceExtensions
 {
@@ -17,7 +18,7 @@ public static class ApplicationServiceExtensions
         });
     public static void AddApplicationServices(this IServiceCollection services)
     {
-        services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
         services.AddValidatorsFromAssembly(typeof(Program).Assembly);
         services.AddAutoMapper(typeof(Program).Assembly);

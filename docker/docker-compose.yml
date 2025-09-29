@@ -23,7 +23,7 @@ services:
       # .NET 8+ soporta ASPNETCORE_HTTP_PORTS como alternativa simple.
       ASPNETCORE_HTTP_PORTS: "8080"   # o usa ASPNETCORE_URLS si prefieres
       ASPNETCORE_ENVIRONMENT: "Development"
-      ConnectionStrings__Default: "Host=db;Port=5433;Database=cleanshop;Username=postgres;Password=postgres"
+      ConnectionStrings__Default: "Host=db;Port=5432;Database=cleanshop;Username=postgres;Password=postgres"
     ports:
       - "8081:8080"
     depends_on:
