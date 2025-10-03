@@ -48,4 +48,6 @@ public class UnitOfWork : IUnitOfWork
     public IProductRepository Products => _productRepository ??= new ProductRepository(_context);
     public IUserMemberService UserMembers => _userMemberService ??= new UserMemberRepository(_context);
     public IRolService Roles => _rolService ??= new RolRepository(_context);
+
+    public IUserMemberRolService UserMemberRoles => throw new NotImplementedException();
 }

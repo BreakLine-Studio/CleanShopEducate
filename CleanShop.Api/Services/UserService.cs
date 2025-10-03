@@ -69,6 +69,12 @@ public class UserService : IUserService
     public async Task<DataUserDto> GetTokenAsync(LoginDto model)
     {
         DataUserDto datosUsuarioDto = new DataUserDto();
+        if (string.IsNullOrEmpty(model.Username))
+        {
+            datosUsuarioDto.IsAuthenticated = false;
+            datosUsuarioDto.Message = "El nombre de usuario no puede ser nulo o vacío.";
+            return datosUsuarioDto;
+        }
         var usuario = await _unitOfWork.UserMembers
                     .GetByUserNameAsync(model.Username);
 
@@ -76,6 +82,13 @@ public class UserService : IUserService
         {
             datosUsuarioDto.IsAuthenticated = false;
             datosUsuarioDto.Message = $"No existe ningún usuario con el username {model.Username}.";
+            return datosUsuarioDto;
+        }
+
+        if (string.IsNullOrEmpty(model.Password))
+        {
+            datosUsuarioDto.IsAuthenticated = false;
+            datosUsuarioDto.Message = $"La contraseña no puede ser nula o vacía para el usuario {usuario.Username}.";
             return datosUsuarioDto;
         }
 
@@ -95,8 +108,21 @@ public class UserService : IUserService
             if (usuario.RefreshTokens.Any(a => a.IsActive))
             {
                 var activeRefreshToken = usuario.RefreshTokens.Where(a => a.IsActive == true).FirstOrDefault();
-                datosUsuarioDto.RefreshToken = activeRefreshToken.Token;
-                datosUsuarioDto.RefreshTokenExpiration = activeRefreshToken.Expires;
+                if (activeRefreshToken != null)
+                {
+                    datosUsuarioDto.RefreshToken = activeRefreshToken.Token;
+                    datosUsuarioDto.RefreshTokenExpiration = activeRefreshToken.Expires;
+                }
+                else
+                {
+                    // If no active refresh token is found, create a new one
+                    var refreshToken = CreateRefreshToken();
+                    datosUsuarioDto.RefreshToken = refreshToken.Token;
+                    datosUsuarioDto.RefreshTokenExpiration = refreshToken.Expires;
+                    usuario.RefreshTokens.Add(refreshToken);
+                    await _unitOfWork.UserMembers.UpdateAsync(usuario);
+                    await _unitOfWork.SaveChangesAsync();
+                }
             }
             else
             {
@@ -130,6 +156,10 @@ public class UserService : IUserService
                                 new Claim("uid", usuario.Id.ToString())
                         }
         .Union(roleClaims);
+        if (string.IsNullOrEmpty(_jwt.Key))
+        {
+            throw new InvalidOperationException("JWT Key cannot be null or empty.");
+        }
         var symmetricSecurityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwt.Key));
         var signingCredentials = new SigningCredentials(symmetricSecurityKey, SecurityAlgorithms.HmacSha256);
         var jwtSecurityToken = new JwtSecurityToken(
@@ -178,7 +208,7 @@ public class UserService : IUserService
         if (result == PasswordVerificationResult.Success)
         {
             var rolExists = _unitOfWork.Roles
-                                        .Find(u => u.Name.ToLower() == model.Role.ToLower())
+                                        .Find(u => u.Name.Equals(model.Role, StringComparison.CurrentCultureIgnoreCase))
                                         .FirstOrDefault();
 
             if (rolExists != null)

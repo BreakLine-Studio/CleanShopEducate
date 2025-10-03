@@ -9,7 +9,7 @@ public interface IUserMemberService
     Task<UserMember?> GetByIdAsync(int id, CancellationToken ct = default);
     IEnumerable<UserMember> Find(Expression<Func<UserMember, bool>> expression);
     Task<IEnumerable<UserMember>> GetAllAsync(CancellationToken ct = default);
-    Task<IEnumerable<UserMember>> GetPagedAsync(int page, int size, string? q, CancellationToken ct = default);
+    Task<(int totalRegistros, IEnumerable<UserMember> registros)> GetPagedAsync(int pageIndex, int pageSize,string search);
     Task<int> CountAsync(string? q, CancellationToken ct = default);
     Task AddAsync(UserMember entity, CancellationToken ct = default);
     Task UpdateAsync(UserMember entity, CancellationToken ct = default);

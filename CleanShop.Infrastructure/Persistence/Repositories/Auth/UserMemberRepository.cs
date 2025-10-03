@@ -11,13 +11,12 @@ public class UserMemberRepository(AppDbContext db) : IUserMemberService
 
     public Task<int> CountAsync(string? search = null, CancellationToken ct = default)
     {
-        var query = db.Products.AsNoTracking();
+        var query = db.UsersMembers.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim().ToUpper();
             query = query.Where(p =>
-                p.Name.ToUpper().Contains(term) ||
-                p.Sku.Value.ToUpper().Contains(term));
+                p.Username.ToUpper().Contains(term));
         }
         return query.CountAsync(ct);
     }
@@ -48,10 +47,6 @@ public class UserMemberRepository(AppDbContext db) : IUserMemberService
         return user;
     }
 
-    public Task<IEnumerable<UserMember>> GetPagedAsync(int page, int size, string? q, CancellationToken ct = default)
-    {
-        throw new NotImplementedException();
-    }
 
     public async Task AddAsync(UserMember usermember, CancellationToken ct = default)
     {
@@ -76,5 +71,18 @@ public class UserMemberRepository(AppDbContext db) : IUserMemberService
     async Task<IEnumerable<UserMember>> IUserMemberService.GetAllAsync(CancellationToken ct)
     {
         return await db.UsersMembers.AsNoTracking().ToListAsync(ct);
+    }
+
+    public async Task<(int totalRegistros, IEnumerable<UserMember> registros)> GetPagedAsync(int pageIndex, int pageSize, string search)
+    {
+        var totalRegistros = await db.Set<UserMember>()
+                            .CountAsync();
+
+        var registros = await db.Set<UserMember>()
+                                .Skip((pageIndex - 1) * pageSize)
+                                .Take(pageSize)
+                                .ToListAsync();
+
+        return (totalRegistros, registros);
     }
 }
