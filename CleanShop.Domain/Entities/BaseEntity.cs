@@ -5,7 +5,7 @@ namespace CleanShop.Domain.Entities;
 public abstract class BaseEntity
 {
 
-      public DateOnly CreatedAt { get; set; } 
-      public DateOnly UpdatedAt { get; set; } 
+      public DateTime CreatedAt { get; set; }
+      public DateTime UpdatedAt { get; set; }
     
 }

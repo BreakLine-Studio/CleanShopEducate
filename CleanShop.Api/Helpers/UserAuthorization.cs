@@ -2,7 +2,7 @@ using System;
 
 namespace CleanShop.Api.Helpers;
 
-public class Authorization
+public class UserAuthorization
 {
     public enum Roles
     {

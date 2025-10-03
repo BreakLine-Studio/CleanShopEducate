@@ -6,6 +6,15 @@ using CleanShop.Infrastructure.Persistence.Repositories;
 using CleanShop.Api.Mappings;
 using CleanShop.Infrastructure.UnitOfWork;
 using System.Threading.RateLimiting;
+using CleanShop.Api.Helpers;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using Microsoft.AspNetCore.Mvc;
+using CleanShop.Api.Helpers.Errors;
+using Microsoft.AspNetCore.Identity;
+using CleanShop.Domain.Entities.Auth;
+using CleanShop.Api.Services;
 namespace CleanShop.Api.Extensions;
 
 public static class ApplicationServiceExtensions
@@ -37,6 +46,9 @@ public static class ApplicationServiceExtensions
         });
     public static void AddApplicationServices(this IServiceCollection services)
     {
+        services.AddScoped<IPasswordHasher<UserMember>, PasswordHasher<UserMember>>();
+        services.AddScoped<IUserService, UserService>();
+        
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
         services.AddValidatorsFromAssembly(typeof(Program).Assembly);
@@ -102,5 +114,77 @@ public static class ApplicationServiceExtensions
         });
 
         return services;
+    }
+    public static void AddJwt(this IServiceCollection services, IConfiguration configuration)
+    {
+        //Configuration from AppSettings
+        services.Configure<JWT>(configuration.GetSection("JWT"));
+
+        //Adding Athentication - JWT
+        _ = services.AddAuthentication(options =>
+        {
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        })
+            .AddJwtBearer(o =>
+            {
+                o.RequireHttpsMetadata = false;
+                o.SaveToken = false;
+                o.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero,
+                    ValidIssuer = configuration["JWT:Issuer"],
+                    ValidAudience = configuration["JWT:Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JWT:Key"]!))
+                };
+            });
+        // 3. Authorization – Policies
+        services.AddAuthorization(options =>
+        {
+            // Política que exige rol Admin
+            options.AddPolicy("Admins", policy =>
+                policy.RequireRole("Administrator"));
+
+            options.AddPolicy("Others", policy =>
+                policy.RequireRole("Other"));
+
+            options.AddPolicy("Pro", policy =>
+                policy.RequireRole("Professional"));
+
+            // Política que exige claim Subscription = "Premium"
+            options.AddPolicy("Professional", policy =>
+                policy.RequireClaim("Subscription", "Premium"));
+
+            // Política compuesta: rol Admin o claim Premium
+            options.AddPolicy("OtherOPremium", policy =>
+                policy.RequireAssertion(context =>
+                    context.User.IsInRole("Other")
+                || context.User.HasClaim(c =>
+                        c.Type == "Subscription" && c.Value == "Premium")));
+        });
+    }
+    public static void AddValidationErrors(this IServiceCollection services)
+    {
+        services.Configure<ApiBehaviorOptions>(options =>
+        {
+            options.InvalidModelStateResponseFactory = actionContext =>
+            {
+
+                var errors = actionContext.ModelState.Where(u => u.Value!.Errors.Count > 0)
+                                                .SelectMany(u => u.Value!.Errors)
+                                                .Select(u => u.ErrorMessage).ToArray();
+
+                var errorResponse = new ApiValidation()
+                {
+                    Errors = errors
+                };
+
+                return new BadRequestObjectResult(errorResponse);
+            };
+        });
     }
 }

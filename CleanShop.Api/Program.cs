@@ -1,4 +1,5 @@
 using CleanShop.Api.Extensions;
+using CleanShop.Api.Helpers.Errors;
 using CleanShop.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,6 +12,7 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.ConfigureCors();
 builder.Services.AddCustomRateLimiter();
+builder.Services.AddJwt(builder.Configuration);
 builder.Services.AddApplicationServices();
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
@@ -23,7 +25,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 //     opt.UseNpgsql(builder.Configuration.GetConnectionString("Postgres")));
 
 var app = builder.Build();
-
+app.UseMiddleware<ExceptionMiddleware>();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -35,7 +37,9 @@ app.UseCors("Dinamica");
 
 app.UseHttpsRedirection();
 app.UseRateLimiter();
+
 app.UseAuthorization();
+app.UseAuthentication();
 
 app.MapControllers();
 
