@@ -21,16 +21,18 @@ public class RolRepository(AppDbContext db) : IRolService
         var query = db.Rols.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var term = search.Trim().ToUpper();
-            query = query.Where(p =>
-                p.Name.ToUpper().Contains(term));
+            var term = $"%{search.Trim()}%";
+            query = query.Where(p => EF.Functions.ILike(p.Name, term));
         }
         return query.CountAsync(ct);
     }
 
     public IEnumerable<Rol> Find(Expression<Func<Rol, bool>> expression)
     {
-        return db.Set<Rol>().Where(expression);
+        // Global tracking is disabled (UseQueryTrackingBehavior(NoTracking)).
+        // For relationship changes we need tracked entities to avoid EF trying
+        // to INSERT existing roles (causing duplicate PK errors). Use AsTracking here.
+        return db.Set<Rol>().AsTracking().Where(expression);
     }
 
     public async Task<IEnumerable<Rol>> GetAllAsync(CancellationToken ct = default)

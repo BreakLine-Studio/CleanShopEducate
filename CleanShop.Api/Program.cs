@@ -26,6 +26,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 var app = builder.Build();
 app.UseMiddleware<ExceptionMiddleware>();
+await app.SeedRolesAsync();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {

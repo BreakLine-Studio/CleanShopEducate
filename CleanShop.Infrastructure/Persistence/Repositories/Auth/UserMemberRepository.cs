@@ -14,18 +14,17 @@ public class UserMemberRepository(AppDbContext db) : IUserMemberService
         var query = db.UsersMembers.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var term = search.Trim().ToUpper();
-            query = query.Where(p =>
-                p.Username.ToUpper().Contains(term));
+            var term = $"%{search.Trim()}%";
+            query = query.Where(p => EF.Functions.ILike(p.Username, term));
         }
         return query.CountAsync(ct);
     }
-    public async Task<UserMember?> GetByUserNameAsync(string userName)
+    public async Task<UserMember?> GetByUserNameAsync(string userName, CancellationToken ct = default)
     {
         return await db.UsersMembers
                 .Include(u => u.UserMemberRols)
                 .Include(u => u.Rols)
-                .FirstOrDefaultAsync(u => u.Username.ToLower() == userName.ToLower());
+                .FirstOrDefaultAsync(u => EF.Functions.ILike(u.Username, userName));
 
     }
     public virtual IEnumerable<UserMember> Find(Expression<Func<UserMember, bool>> expression)

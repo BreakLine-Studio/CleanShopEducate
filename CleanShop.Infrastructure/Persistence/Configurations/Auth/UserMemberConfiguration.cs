@@ -46,7 +46,7 @@ public class UserMemberConfiguration : IEntityTypeConfiguration<UserMember>
             .HasColumnType("date")
             .HasDefaultValueSql("CURRENT_DATE")
             .ValueGeneratedOnAddOrUpdate();
-                        builder
+        builder
                .HasMany(p => p.Rols)
                .WithMany(r => r.UsersMembers)
                .UsingEntity<UserMemberRol>(
